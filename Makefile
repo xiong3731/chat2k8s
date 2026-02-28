@@ -13,13 +13,12 @@ LOG_FILE := $(DIST_DIR)/mcp.log
 # - Build kubernetes-mcp-server to dist directory
 init:
 	@echo "Updating submodules..."
-	git submodule update --remote
+	git submodule update --remote --init
 	@echo "Installing Python dependencies..."
 	uv sync
 	@echo "Building kubernetes-mcp-server..."
 	mkdir -p $(DIST_DIR)
-	cd $(MCP_SERVER_SRC) && go build -o ../$(DIST_DIR)/$(BINARY_NAME) $(MCP_SERVER_CMD)
-	@echo "Build complete: $(DIST_DIR)/$(BINARY_NAME)"
+	go build -C $(MCP_SERVER_SRC) -o $(CURDIR)/$(DIST_DIR)/$(BINARY_NAME) $(MCP_SERVER_CMD)
 
 # 2: Start MCP Server (SSE Process)
 # Runs in background, writes PID to file, logs to mcp.log
