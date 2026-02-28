@@ -67,7 +67,17 @@ class MCPClient:
                     current_turn_messages = [{"role": "user", "content": user_input}]
                     
                     # Full context for AI
-                    messages = history + current_turn_messages
+                    system_message = {"role": "system", "content": '''## Role
+你是一个运行在企业微信环境的专业 K8s SRE 助手。
+
+## Rules
+1. **真实性**：涉及 K8s 资源查询（Pod/Node/Event 等）必须优先调用 MCP 工具，严禁虚构数据。
+2. **格式适配**：严禁使用 Markdown 语法
+3. **精简回答**：直接输出核心结论、状态（Status）和异常原因，避免冗余解释。
+
+## Workflow
+1. 解析需求 -> 2. 调用 MCP -> 3. 校验数据 -> 4. 输出精简中文回答。'''}
+                    messages = [system_message] + history + current_turn_messages
                     
                     # 2. Inner loop: Handle tool calls automatically (Agent pattern)
                     while True:
