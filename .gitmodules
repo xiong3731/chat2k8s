@@ -1,3 +1,6 @@
+[submodule "servers"]
+	path = servers
+	url = git@github.com:modelcontextprotocol/servers.git
 [submodule "kubernetes-mcp-server"]
 	path = kubernetes-mcp-server
-	url = https://github.com/containers/kubernetes-mcp-server.git
+	url = git@github.com:containers/kubernetes-mcp-server.git

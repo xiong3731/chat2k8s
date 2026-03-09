@@ -3,5 +3,8 @@ __pycache__/
 .venv/
 .env
 dist/
-kubeConfig/*
 nohup.out
+test/
+tmp/
+*.log
+.DS_Store

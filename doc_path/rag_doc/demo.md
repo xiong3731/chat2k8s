@@ -1,0 +1,2 @@
+这个文件夹下的所有.md文件都将被作为RAG文档
+运行`make docinit`初始化RAG文档到milvus向量数据库中

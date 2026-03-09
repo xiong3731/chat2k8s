@@ -1,75 +1,54 @@
-.PHONY: init build start stop status run clean
+# Image configuration
+IMAGE_REGISTRY ?= uhub.service.ucloud.cn/xiong
+IMAGE_NAME ?= chat2k8s
+IMAGE_TAG ?= $(shell date +%Y%m%d%H%M%S)
+FULL_IMAGE_NAME = $(IMAGE_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 
-# Variables
-DIST_DIR := dist
-BINARY_NAME := kubernetes-mcp-server
-MCP_SERVER_SRC := kubernetes-mcp-server
-MCP_SERVER_CMD := ./cmd/kubernetes-mcp-server
-PID_FILE := $(DIST_DIR)/mcp.pid
-LOG_FILE := $(DIST_DIR)/mcp.log
+.PHONY: init run docinit build push
 
 # 1: Project Initialization
 # - Install python dependencies with uv
-# - Build kubernetes-mcp-server to dist directory
 init:
-	@echo "Updating submodules..."
-	git submodule update --remote --init
 	@echo "Installing Python dependencies..."
 	uv sync
-	@echo "Building kubernetes-mcp-server..."
-	mkdir -p $(DIST_DIR)
-	go build -C $(MCP_SERVER_SRC) -o $(CURDIR)/$(DIST_DIR)/$(BINARY_NAME) $(MCP_SERVER_CMD)
 
-# 2: Start MCP Server (SSE Process)
-# Runs in background, writes PID to file, logs to mcp.log
-start:
-	@if [ -f $(PID_FILE) ]; then \
-		echo "MCP server is already running (PID: $$(cat $(PID_FILE)))"; \
-	else \
-		echo "Starting MCP server..."; \
-		nohup ./$(DIST_DIR)/$(BINARY_NAME) \
-			--kubeconfig kubeConfig/config.yaml \
-			--read-only \
-			--port 5678 \
-			> $(LOG_FILE) 2>&1 & \
-		echo $$! > $(PID_FILE); \
-		echo "MCP server started with PID $$(cat $(PID_FILE)). Logs: $(LOG_FILE)"; \
-	fi
-
-# Stop MCP Server
-stop:
-	@if [ -f $(PID_FILE) ]; then \
-		echo "Stopping MCP server (PID: $$(cat $(PID_FILE)))..."; \
-		kill $$(cat $(PID_FILE)) || true; \
-		rm -f $(PID_FILE); \
-		echo "MCP server stopped."; \
-	else \
-		echo "MCP server is not running (PID file not found)."; \
-	fi
-
-# Check MCP Server Status
-status:
-	@if [ -f $(PID_FILE) ]; then \
-		PID=$$(cat $(PID_FILE)); \
-		if ps -p $$PID > /dev/null; then \
-			echo "MCP server is running (PID: $$PID)"; \
-		else \
-			echo "MCP server is not running (PID file exists but process not found)"; \
-			rm -f $(PID_FILE); \
-		fi \
-	else \
-		echo "MCP server is not running"; \
-	fi
-
-# 3: Run Main Application
+# 2: Run Main Application
 run:
 	@echo "Starting Chat2K8s..."
 	uv run main.py
 
-# Clean build artifacts
-clean:
-	@if [ -f $(PID_FILE) ]; then \
-		echo "Stopping MCP server before cleaning..."; \
-		kill $$(cat $(PID_FILE)) || true; \
-	fi
-	rm -rf $(DIST_DIR)
+# Initialize/Overwrite Vector Database
+docinit:
+	@echo "Initializing Vector Database..."
+	uv run scripts/rag-init.py
+
+# 3: Build Docker Image
+# - Sync git submodules
+# - Build image with registry prefix
+build:
+	@echo "Syncing and updating submodules..."
+	git submodule sync
+	git submodule update --init --recursive
+	@echo "Building docker image for linux/amd64: $(FULL_IMAGE_NAME)..."
+	docker build --no-cache --platform linux/amd64 -t $(FULL_IMAGE_NAME) .
+	@echo "Image build successful: $(FULL_IMAGE_NAME)"
+
+# 4: Push Docker Image
+push:
+	@echo "Pushing docker image: $(FULL_IMAGE_NAME)..."
+	docker push $(FULL_IMAGE_NAME)
+	@echo "Image push successful: $(FULL_IMAGE_NAME)"
+
+# 5: Run Docker Image locally
+# - Mount .env and kubeConfig for local container testing
+# - Set ENVIRONMENT=k8s to use internal MCP binaries
+# - Mount guide_doc specifically for Filesystem MCP
+docker-run:
+	@echo "Running docker image locally: $(FULL_IMAGE_NAME)..."
+	docker run -it --rm \
+		--env-file .env \
+		-e ENVIRONMENT=k8s \
+		-v $(shell pwd)/kubeConfig:/app/kubeConfig \
+		-v $(shell pwd)/doc_path/guide_doc:/projects \
+		--name $(IMAGE_NAME) \
+		$(FULL_IMAGE_NAME)
