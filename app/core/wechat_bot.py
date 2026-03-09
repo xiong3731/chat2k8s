@@ -163,9 +163,23 @@ class WeChatBot:
         body = req_data.get("body", {})
         req_id = headers.get("req_id")
         content = body.get("text", {}).get("content", "")
-        sender = body.get("sender", "default_user")
         
-        logger.info(f"Received user message from {sender}: {content}")
+        # 提取会话 ID，确保不同用户/会话的上下文隔离
+        # 1. 优先使用 userid (确保用户级别的上下文隔离)
+        # 2. 如果在群聊中且需要群组级别的隔离，可以使用 chatid
+        # 这里遵循用户要求“不同用户隔离”，故优先使用 userid
+        userid = (
+            body.get("from", {}).get("userid") or 
+            body.get("sender") or 
+            headers.get("from_user_id") or 
+            "default_user"
+        )
+        
+        # 如果是群聊，可以考虑将 chatid 加入 context key 以实现更细粒度的隔离
+        # 但目前先满足用户最核心的“用户间隔离”需求
+        session_id = userid
+        
+        logger.info(f"Received user message from {session_id} (req_id: {req_id}, type: {body.get('chattype', 'single')}): {content}")
         
         # Start streaming response from LLM
         stream_id = str(uuid.uuid4())
@@ -181,11 +195,11 @@ class WeChatBot:
             stream_started = True
             logger.info("Initial 'Thinking' frame sent.")
 
-            # 2. 随后流式输出 LLM 的中间过程和最终答案
+            # 2. 随后流式输出 LLM 的中间过程 and 最终答案
             logger.info("Starting LLM stream processing...")
-            async for chunk in mcp_client.process_message(content, user_id=sender):
+            async for chunk in mcp_client.process_message(content, user_id=session_id):
                 last_content = chunk
-                logger.info(f"Sending stream chunk: {last_content[:50]}...")
+                logger.info(f"Sending stream chunk: {last_content}")
                 await self.send_cmd("aibot_respond_msg", {
                     "msgtype": "stream",
                     "stream": {"id": stream_id, "finish": False, "content": last_content}
