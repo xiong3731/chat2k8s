@@ -42,14 +42,14 @@ class MCPClient:
 
     def _load_system_prompt(self):
         """Load system prompt from guide.md file."""
-        guide_path = "./doc_path/guide_doc/guide.md"
-        if os.path.exists(guide_path):
+        guide_path = settings.SYSTEM_PROMPT_PATH
+        if guide_path and os.path.exists(guide_path):
             try:
                 with open(guide_path, 'r', encoding='utf-8') as f:
                     self.system_content = f.read()
-                logger.info("System prompt loaded/reloaded from guide.md")
+                logger.info(f"System prompt loaded/reloaded from {guide_path}")
             except Exception as e:
-                logger.warning(f"Failed to load guide.md: {e}")
+                logger.warning(f"Failed to load system prompt from {guide_path}: {e}")
                 if not self.system_content:
                     self.system_content = "你是一个专业的 K8s SRE 助手。"
         else:

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # MCP Configuration
     MCP_K8S_COMMAND: list[str] = []
     MCP_FS_COMMAND: list[str] = []
+    SYSTEM_PROMPT_PATH: str = ""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
             ]
             # Filesystem MCP 使用 node 运行集成的代码
             self.MCP_FS_COMMAND = ["node", "/usr/local/lib/mcp-filesystem/index.js", "/projects"]
+            # 系统提示词路径 (Docker 映射路径)
+            self.SYSTEM_PROMPT_PATH = "/projects/guide.md"
         else:
             # 本地运行，使用 Docker 容器方案
             self.MCP_K8S_COMMAND = [
@@ -48,6 +51,8 @@ class Settings(BaseSettings):
                 "mcp/filesystem", 
                 "/projects"
             ]
+            # 系统提示词路径 (本地相对路径)
+            self.SYSTEM_PROMPT_PATH = os.path.join(base_dir, "doc_path", "guide_doc", "guide.md")
 
     # OpenAI Configuration 
     OPENAI_API_KEY: str = ""
