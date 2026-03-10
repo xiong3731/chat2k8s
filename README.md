@@ -26,10 +26,12 @@
 ```mermaid
 graph TD
     User[企业微信用户] <-->|WebSocket| Bot[WeChat Bot 客户端]
-    Bot <-->|消息处理| Agent[LangGraph Agent]
-    Agent <-->|MCP Protocol| K8sServer[K8s MCP Server]
-    Agent <-->|MCP Protocol| FSServer[Filesystem MCP Server]
-    Agent <-->|Vector Search| RAG[RAG Service]
+    Bot <-->|消息处理| Client[LLM Client Facade]
+    Client <-->|Agent 编排| Agent[LangGraph Agent]
+    Client <-->|连接管理| MCP[MCP Manager]
+    MCP <-->|MCP Protocol| K8sServer[K8s MCP Server]
+    MCP <-->|MCP Protocol| FSServer[Filesystem MCP Server]
+    MCP <-->|Vector Search| RAG[RAG Service]
     K8sServer <-->|KubeAPI| Cluster[Kubernetes Cluster]
     RAG <-->|Milvus| DB[(运维知识库)]
 ```
@@ -77,16 +79,33 @@ graph TD
 | `RAG_EMBEDDING_MODEL` | 向量嵌入模型 |
 | `RAG_MILVUS_HOST` | Milvus 数据库地址 |
 | `RAG_RERANK_MODEL` | 重排序模型 |
+| `MCP_K8S_COMMAND` | K8s MCP Server 启动命令 |
+| `MCP_FS_COMMAND` | Filesystem MCP Server 启动命令 |
 
 ---
 
 ## 📂 项目结构
 
-- [main.py](main.py): 程序入口，初始化并启动 WeChat Bot。
-- [app/core/wechat_bot.py](app/core/wechat_bot.py): 处理 WebSocket 连接与流式消息分发。
-- [app/llm/client.py](app/llm/client.py): LangGraph Agent 核心逻辑，集成 MCP 客户端。
-- [app/llm/rag.py](app/llm/rag.py): RAG 检索与重排序服务。
-- [app/core/config.py](app/core/config.py): 基于 Pydantic 的全量配置管理。
+```text
+chat2k8s/
+├── app/
+│   ├── core/
+│   │   └── config.py           # 全局配置管理 (Pydantic)
+│   ├── llm/
+│   │   ├── agent.py            # LangGraph Agent 逻辑与状态管理
+│   │   ├── client.py           # 统一入口 (Facade)，协调 Agent 与 MCP
+│   │   ├── mcp_core.py         # MCP 连接管理与工具调用核心
+│   │   ├── rag.py              # RAG 检索与重排序服务
+│   │   └── utils.py            # 工具函数 (Token 计数等)
+│   ├── wechat/
+│   │   ├── bot.py              # WeChatBot 类，WebSocket 长连接管理
+│   │   ├── crypto.py           # 企业微信加解密工具
+│   │   └── handlers.py         # 消息解析与分发 (文本/图片/文件)
+│   └── utils/
+├── main.py                     # 程序入口，生命周期管理
+├── pyproject.toml              # 项目依赖配置
+└── README.md                   # 项目文档
+```
 
 ---
 
@@ -96,6 +115,7 @@ graph TD
 - “帮我看看 default 命名空间下有哪些 Pod 在报错？”
 - “查看 pod [name] 的最后 50 行日志”
 - “根据运维手册，如何处理 ImagePullBackOff 错误？” (需开启 RAG)
+- “/clear” - 清理当前对话上下文
 
 ---
 
