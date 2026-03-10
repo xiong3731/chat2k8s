@@ -30,7 +30,7 @@ build:
 	git submodule sync
 	git submodule update --init --recursive
 	@echo "Building docker image for linux/amd64: $(FULL_IMAGE_NAME)..."
-	docker build --no-cache --platform linux/amd64 -t $(FULL_IMAGE_NAME) .
+	docker build --platform linux/amd64 -t $(FULL_IMAGE_NAME) .
 	@echo "Image build successful: $(FULL_IMAGE_NAME)"
 
 # 4: Push Docker Image
